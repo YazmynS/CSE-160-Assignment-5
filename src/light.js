@@ -26,7 +26,7 @@ export function createLight(scene) {
     spotLight.penumbra = 0.3;
     spotLight.decay = 2;
     spotLight.distance = 20;
-    spotLight.target.position.set(0, 0, 0);
+    spotLight.target.position.set(0, 3, 3);
     scene.add(spotLight);
     scene.add(spotLight.target);
     

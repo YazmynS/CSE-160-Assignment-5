@@ -3,6 +3,7 @@ import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { createCamera } from './src/camera.js'; 
 import { createLight } from './src/light.js';
+import { createShapeInstance } from './src/shapes.js';
 
 function main() {
     // Initialize Renderer
@@ -21,31 +22,31 @@ function main() {
 
     //Initialize Skybox
     const skyLoader = new THREE.TextureLoader();
-    const skyTexture = skyLoader.load(
-        'bg.jpg',
-        () => {
-            skyTexture.mapping = THREE.EquirectangularReflectionMapping;
-            skyTexture.colorSpace = THREE.SRGBColorSpace;
-            scene.background = skyTexture;
-        }
-    );
+    const skyTexture = skyLoader.load('tex/bg.jpg',() => {
+        skyTexture.mapping = THREE.EquirectangularReflectionMapping;
+        skyTexture.colorSpace = THREE.SRGBColorSpace;
+        scene.background = skyTexture;
+    });
 
     // Load Block Texture 
     const loader = new THREE.TextureLoader();
-    const trunkText = loader.load('trunk.png');
-    const leafText = loader.load('leaves.png');
-    const ropeText = loader.load('rope.png');
+    const textures = {
+        trunk: loader.load('tex/trunk.png'),
+        leaf:  loader.load('tex/leaves.png'),
+        rope: loader.load('tex/rope.png'),
+        sunny: loader.load('tex/sun.jpg')
+    }
 
     //Load House Model
-    const houseTexture = loader.load('house.png');
+    const houseTexture = loader.load('tex/house.png');
     const mtlLoader = new MTLLoader();
-    mtlLoader.load('house.mtl', (materials) => {
+    mtlLoader.load('tex/house.mtl', (materials) => {
         materials.preload();
         
         // Position House
         const objLoader = new OBJLoader();
         objLoader.setMaterials(materials);
-        objLoader.load('house.obj', (object) => {
+        objLoader.load('tex/house.obj', (object) => {
             object.scale.set(0.1, 0.1, 0.1);
             object.position.set(0, -0.5, -2);
         
@@ -69,48 +70,97 @@ function main() {
     ground.position.y = -1;  // Adjust to match scene ground level
     ground.receiveShadow = true;
     scene.add(ground);
-    ground.receiveShadow = true;
- 
-    // Cube geometry
-    const boxWidth = 1;
-    const boxHeight = 1;
-    const boxDepth = 1;
-    const cubeGeometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
-    const ropeGeometry = new THREE.BoxGeometry(4, .1, .1); // Tall rectangular cylinder
-    const cylinderGeometry = new THREE.CylinderGeometry(0.3, 0.3, 3, 32); // Radius top, Radius bottom, Height, Radial segments
-    const sphereGeometry = new THREE.SphereGeometry(1, 64, 64); // Sphere with radius 0.5
-
+    ground.receiveShadow = true; 
+        
     // Create Shapes
-    function makeInstance(geometry, color, x, y, z, texture = null) {
-        let material;
-        if (texture) { material = new THREE.MeshBasicMaterial({ map: texture }); } 
-        else { material = new THREE.MeshPhongMaterial({ color }); }
-
-        const cube = new THREE.Mesh(geometry, material);
-        scene.add(cube);
-        cube.position.set(x, y, z);
-        cube.castShadow = true;
-        cube.receiveShadow = true;
-        return cube;
-    }
-
-        const leafCube = makeInstance(sphereGeometry, 0x44aa88, -2, 2, 3, leafText);
-        const trunkCube = makeInstance(cylinderGeometry, 0x8844aa, -2, 1, 3, trunkText);
-        const leafCube2 = makeInstance(sphereGeometry, 0x44aa88, 2, 2, 3, leafText);
-        const trunkCube2 = makeInstance(cylinderGeometry, 0x8844aa, 2, 1, 3, trunkText);
-        const sunCube = makeInstance(cubeGeometry, 0xaa8844, 2,1,0);
-        const ropeCube = makeInstance(ropeGeometry, 0x8844aa, 0, 0, 3, ropeText);
-
-        trunkCube.castShadow = true;
-        trunkCube.receiveShadow = true;
+    const sun = createShapeInstance(scene, 'cube', 0xffcc00,
+        { x: 2, y: 4, z: -1 }, 
+        { x: 1, y: 1, z: 1 }, textures.sunny);
+    // Remove fog and shadow from sun
+    sun.material.fog = false;
+    sun.castShadow = false;
+    sun.receiveShadow = false;
+    
+    const trunk = createShapeInstance(scene, 'cylinder', 0x8B4513,
+        { x: -2, y: .5, z: 4 },
+        { radiusTop: 0.3, radiusBottom: 0.3, height: 2 }, textures.trunk);
+    const trunk1 = createShapeInstance(scene, 'cylinder', 0x8B4513,
+        { x: 2, y: .5, z: 4 },
+        { radiusTop: 0.3, radiusBottom: 0.3, height: 2 }, textures.trunk);
+    const leaf = createShapeInstance(scene, 'sphere', 0x44aa88,
+        { x: -2, y: 2.5, z: 4 },
+        { radius: 1 }, textures.leaf);
+    const leaf1 = createShapeInstance(scene, 'sphere', 0x44aa88,
+        { x: 2, y: 2.5, z: 4 },
+        { radius: 1 }, textures.leaf);
+    const rope = createShapeInstance(scene, 'prism', 0x8B4513,
+        { x: 0, y: 0, z: 4 },  
+        {  width: 4, height: 0.08, depth: 0.08 }, textures.rope);
+   
+    // Create Kid
+    const humanHead = createShapeInstance(scene, 'sphere', 0xffccaa,
+        { x: 0, y: 1.2, z: 4 },
+        { radius: 0.2 });
+    const humanBody = createShapeInstance(scene, 'cylinder', 0x0000ff,
+        { x: 0, y: .8, z: 4 },
+        { radiusTop: 0.2, radiusBottom: 0.25, height: .3 });
+    const humanBody2 = createShapeInstance(scene, 'cylinder', 0x0000ff,
+        { x: 0, y: .5, z: 4 },
+        { radiusTop: 0.25, radiusBottom: 0.2, height: .3 });
+    const humanLeg = createShapeInstance(scene, 'prism', 0x0000ff,
+        { x: 0, y: 0.2, z: 4 },
+        { width: .09, height: 0.3, depth: 0.1 });
+    const humanLeg2 = createShapeInstance(scene, 'prism', 0x0000ff,
+        { x: 0.15, y: .3, z: 4.1 },
+        { width: .4, height: 0.09, depth: 0.1 });
+    const humanArm1 = createShapeInstance(scene, 'prism', 0x0000ff,
+        { x: 0, y: .8, z: 3.6 },
+        { width: .09, height: 0.1, depth: 0.45 });
+    const humanArm2 = createShapeInstance(scene, 'prism', 0x0000ff,
+        { x: 0, y: .8, z: 4.3 },
+        { width: .09, height: 0.1, depth: 0.45 });
+    const humanFoot1 = createShapeInstance(scene, 'prism', 0xfffff,
+        { x: -0.05, y: .1, z: 4 },
+        { width: .2, height: 0.101, depth: 0.101 });
+    const humanFoot2 = createShapeInstance(scene, 'prism', 0xfffff,
+        { x: 0.3, y: .25, z: 4.1 },
+        { width: .101, height: 0.2, depth: 0.101 });
+    const humanHand1 = createShapeInstance(scene, 'sphere', 0xffccaa,
+        { x: 0, y: .8, z: 3.4 },
+        { radius: 0.1 });
+    const humanHand2 = createShapeInstance(scene, 'sphere', 0xffccaa,
+        { x: 0, y: .8, z: 4.5 },
+        { radius: 0.1 });
+    
+    // Make Cloud 
+    const cloudCenter = createShapeInstance(scene, 'sphere', 0xffffff,
+        { x: 1, y: 3, z: .5 },
+        { radius: 0.4 });
+    const cloudLeft = createShapeInstance(scene, 'sphere', 0xffffff,
+        { x: .65, y: 3.2, z: .5 },
+        { radius: 0.2 });
+    const cloudRight = createShapeInstance(scene, 'sphere', 0xffffff,
+        { x: 1.2, y: 2.8, z: .5 },
+        { radius: 0.3 });
+    // Remove fog and shadow from cloud
+    cloudCenter.material.fog = false;
+    cloudCenter.castShadow = false;
+    cloudCenter.receiveShadow = false;
+    cloudLeft.material.fog = false;
+    cloudLeft.castShadow = false;
+    cloudLeft.receiveShadow = false;
+    cloudRight.material.fog = false;
+    cloudRight.castShadow = false;
+    cloudRight.receiveShadow = false;
+       
 
     // Render Scene Function
     function render(time) {
         time *= 0.001; 
         
         // Sun Animation
-        sunCube.rotation.x += 0.02; 
-        sunCube.rotation.y += 0.02;
+        sun.rotation.x += 0.02; 
+        sun.rotation.y += 0.02;
         renderer.render(scene, camera);
         requestAnimationFrame(render);
     }
